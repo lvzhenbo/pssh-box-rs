@@ -1,19 +1,12 @@
 /// Tests for PSSH box parsing
-
 use base64::prelude::{Engine as _, BASE64_STANDARD};
-use test_log::test;
-use pssh_box::{from_base64, from_hex, from_bytes, from_buffer, find_iter, pprint};
-use pssh_box::{PsshData, DRMKeyId};
+use pssh_box::{find_iter, from_base64, from_buffer, from_bytes, from_hex, pprint};
+use pssh_box::{DRMKeyId, PsshData};
 use pssh_box::{
-    WIDEVINE_SYSTEM_ID,
-    PLAYREADY_SYSTEM_ID,
-    COMMON_SYSTEM_ID,
-    IRDETO_SYSTEM_ID,
-    WISEPLAY_SYSTEM_ID,
-    MARLIN_SYSTEM_ID,
-    NAGRA_SYSTEM_ID,
-    FAIRPLAYNFLX_SYSTEM_ID};
-
+    COMMON_SYSTEM_ID, FAIRPLAYNFLX_SYSTEM_ID, IRDETO_SYSTEM_ID, MARLIN_SYSTEM_ID, NAGRA_SYSTEM_ID,
+    PLAYREADY_SYSTEM_ID, WIDEVINE_SYSTEM_ID, WISEPLAY_SYSTEM_ID,
+};
+use test_log::test;
 
 #[test]
 fn test_parsing_widevine_v0() {
@@ -27,29 +20,41 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert!(pd.provider.clone().is_some_and(|p| p.eq("widevine_test")));
-        assert_eq!(pd.content_id, Some(hex::decode("323031355f7465617273").unwrap()));
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("323031355f7465617273").unwrap())
+        );
     }
     // check the PartialEq implementation
     assert!(boxes[0] == boxes[0]);
     assert!(boxes.contains(&boxes[0]));
 
-    let boxes = from_base64("AAAAOHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAABgSEAAWNwaftdGsPEdH4BMi5MJI49yVmwY=")
-        .unwrap();
+    let boxes =
+        from_base64("AAAAOHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAABgSEAAWNwaftdGsPEdH4BMi5MJI49yVmwY=")
+            .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert_eq!(pd.key_id[0], hex::decode("001637069fb5d1ac3c4747e01322e4c2").unwrap());
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("001637069fb5d1ac3c4747e01322e4c2").unwrap()
+        );
     }
     assert!(boxes[0] == boxes[0]);
 
-    let boxes = from_base64("AAAAOnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAABoIARIQt1vS7XqCQEOkj9mf8WoEESIENDc2Nw==")
-        .unwrap();
+    let boxes = from_base64(
+        "AAAAOnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAABoIARIQt1vS7XqCQEOkj9mf8WoEESIENDc2Nw==",
+    )
+    .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert_eq!(pd.key_id[0], hex::decode("b75bd2ed7a824043a48fd99ff16a0411").unwrap());
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("b75bd2ed7a824043a48fd99ff16a0411").unwrap()
+        );
     }
     assert!(boxes[0] == boxes[0]);
 
@@ -60,7 +65,10 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert!(pd.provider.clone().is_some_and(|p| p.eq("intertrust")));
-        assert_eq!(pd.key_id[0], hex::decode("45cec14569d06cf7645e98ffdd37a5ae").unwrap());
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("45cec14569d06cf7645e98ffdd37a5ae").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -71,7 +79,10 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert!(pd.provider.clone().is_some_and(|p| p.eq("castlabs")));
-        assert_eq!(pd.key_id[0], hex::decode("29e1280a27c83d91962278f41e18dce6").unwrap());
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("29e1280a27c83d91962278f41e18dce6").unwrap()
+        );
         assert_eq!(pd.content_id, Some(hex::decode("65794a6863334e6c64456c6b496a6f694f4451355a5749324d6a63354e4459304d545a694d44646a4d7a6c6b5a4751314e546b314d54426d4d3245694c434a3259584a7059573530535751694f694a68646d746c65534a39").unwrap()));
     }
     assert!(boxes.contains(&boxes[0]));
@@ -83,8 +94,19 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert!(pd.provider.clone().is_some_and(|p| p.eq("sfr")));
-        assert_eq!(pd.key_id[0], hex::decode("aa8be47a53db29b0e0533b28450a1cbb").unwrap());
-        assert_eq!(pd.content_id, Some(hex::decode("61613862653437612d353364622d323962302d653035332d336232383435306131636262").unwrap()));
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("aa8be47a53db29b0e0533b28450a1cbb").unwrap()
+        );
+        assert_eq!(
+            pd.content_id,
+            Some(
+                hex::decode(
+                    "61613862653437612d353364622d323962302d653035332d336232383435306131636262"
+                )
+                .unwrap()
+            )
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -97,8 +119,17 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.version, 0);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert_eq!(pd.crypto_period_index, Some(1));
-        assert_eq!(pd.key_id[0], hex::decode("c096d06c583442929b0884d9ca83d4f1").unwrap());
-        assert_eq!(pd.content_id, Some(hex::decode("75433835414632527a563772357274646f3642436d704b423450647764566d43").unwrap()));
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("c096d06c583442929b0884d9ca83d4f1").unwrap()
+        );
+        assert_eq!(
+            pd.content_id,
+            Some(
+                hex::decode("75433835414632527a563772357274646f3642436d704b423450647764566d43")
+                    .unwrap()
+            )
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -110,8 +141,14 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.version, 0);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert!(pd.provider.clone().is_some_and(|p| p.eq("amazontvcrime")));
-        assert_eq!(pd.key_id[0], hex::decode("fff63db3cd9c1ad9da78e7b4bcf60e27").unwrap());
-        assert_eq!(pd.content_id, Some(hex::decode("74616d5f74657374").unwrap()));
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("fff63db3cd9c1ad9da78e7b4bcf60e27").unwrap()
+        );
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("74616d5f74657374").unwrap())
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -122,26 +159,41 @@ fn test_parsing_widevine_v0() {
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     assert_eq!(pssh.version, 0);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert!(pd.provider.clone().is_some_and(|p| p.eq("3e6900a5-2803-4fde-a7f1-849e9aed5750")));
-        assert_eq!(pd.key_id[0], hex::decode("0fcce8530d5de2043bc35187a8bc0aa3").unwrap());
-        assert_eq!(pd.content_id, Some(hex::decode("4349443a3136323739303634").unwrap()));
+        assert!(pd
+            .provider
+            .clone()
+            .is_some_and(|p| p.eq("3e6900a5-2803-4fde-a7f1-849e9aed5750")));
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("0fcce8530d5de2043bc35187a8bc0aa3").unwrap()
+        );
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("4349443a3136323739303634").unwrap())
+        );
     }
 
-    let boxes = from_base64("AAAAP3Bzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAB8SEN2Q7Myl60KKrKWuRhwzOPYaBWV6ZHJtSPPGiZsG")
-        .unwrap();
+    let boxes = from_base64(
+        "AAAAP3Bzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAB8SEN2Q7Myl60KKrKWuRhwzOPYaBWV6ZHJtSPPGiZsG",
+    )
+    .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     assert_eq!(pssh.version, 0);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert!(pd.provider.clone().is_some_and(|p| p.eq("ezdrm")));
-        assert_eq!(pd.key_id[0], hex::decode("dd90eccca5eb428aaca5ae461c3338f6").unwrap());
-        assert_eq!(ProtectionScheme::try_from(pd.protection_scheme.unwrap()).unwrap(),
-                   ProtectionScheme::from_str_name("CBCS").unwrap());
+        assert_eq!(
+            pd.key_id[0],
+            hex::decode("dd90eccca5eb428aaca5ae461c3338f6").unwrap()
+        );
+        assert_eq!(
+            ProtectionScheme::try_from(pd.protection_scheme.unwrap()).unwrap(),
+            ProtectionScheme::from_str_name("CBCS").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 }
-
 
 #[test]
 fn test_parsing_widevine_v1() {
@@ -154,7 +206,10 @@ fn test_parsing_widevine_v1() {
     assert_eq!(pssh.version, 1);
     assert_eq!(pssh.flags, 0);
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("840d5cc9fa4523a83164451c615b206a").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("840d5cc9fa4523a83164451c615b206a").unwrap()
+    );
     println!("Widevine-v1> {pssh:?}");
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert_eq!(pd.content_id, Some(hex::decode("6d5655567133504e2d4d664a6a6c7253632d446d434c356231692d33343530343936365f33343530343936375f33343530343936385f33343530343937315f33343530343937325f3334353034393733").unwrap()));
@@ -168,10 +223,16 @@ fn test_parsing_widevine_v1() {
     assert_eq!(pssh.version, 1);
     assert_eq!(pssh.flags, 0);
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("867c8d7670eab5e7aa10571830ad3d8c").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("867c8d7670eab5e7aa10571830ad3d8c").unwrap()
+    );
     println!("Widevine-v1> {pssh:?}");
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert_eq!(pd.content_id, Some(hex::decode("45564d4243504c5553454c494645484459323032334d").unwrap()));
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("45564d4243504c5553454c494645484459323032334d").unwrap())
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -181,13 +242,25 @@ fn test_parsing_widevine_v1() {
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("0dc3ec4f7683548b81e73c64e582e136").unwrap());
-    assert_eq!(pssh.key_ids[1], DRMKeyId::try_from("1447b7ed2f66572bbd1306ce7cf3610d").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("0dc3ec4f7683548b81e73c64e582e136").unwrap()
+    );
+    assert_eq!(
+        pssh.key_ids[1],
+        DRMKeyId::try_from("1447b7ed2f66572bbd1306ce7cf3610d").unwrap()
+    );
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert_eq!(pd.content_id, Some(hex::decode("756e69666965642d73747265616d696e67").unwrap()));
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("756e69666965642d73747265616d696e67").unwrap())
+        );
         assert_eq!(pd.provider, Some(String::from("widevine_test")));
         assert_eq!(pd.key_id.len(), 5);
-        assert_eq!(pd.key_id[1], hex::decode("5ac6a11eaa2f5ed5bf668c401c8134ca").unwrap());
+        assert_eq!(
+            pd.key_id[1],
+            hex::decode("5ac6a11eaa2f5ed5bf668c401c8134ca").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -196,12 +269,17 @@ fn test_parsing_widevine_v1() {
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("840d5cc9fa4523a83164451c615b206a").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("840d5cc9fa4523a83164451c615b206a").unwrap()
+    );
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
         assert_eq!(pd.content_id, Some(hex::decode("6d5655567133504e2d4d664a6a6c7253632d446d434c356231692d33343530343936365f33343530343936375f33343530343936385f33343530343937315f33343530343937325f3334353034393733").unwrap()));
         assert_eq!(pd.provider, None);
-        assert_eq!(ProtectionScheme::try_from(pd.protection_scheme.unwrap()).unwrap(),
-                   ProtectionScheme::from_str_name("CENC").unwrap());
+        assert_eq!(
+            ProtectionScheme::try_from(pd.protection_scheme.unwrap()).unwrap(),
+            ProtectionScheme::from_str_name("CENC").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -211,10 +289,12 @@ fn test_parsing_widevine_v1() {
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, WIDEVINE_SYSTEM_ID);
     assert_eq!(pssh.key_ids.len(), 3);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("010018cfaf0d45ad92a9dd46a496e6f5").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("010018cfaf0d45ad92a9dd46a496e6f5").unwrap()
+    );
     assert!(boxes.contains(&boxes[0]));
 }
-
 
 #[test]
 fn test_parsing_playready_v0() {
@@ -227,7 +307,10 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.flags, 0);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("/8I4XaPt2J8=").unwrap()));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("/8I4XaPt2J8=").unwrap())
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -239,7 +322,10 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("reK/zM2j8pw=").unwrap()));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("reK/zM2j8pw=").unwrap())
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -252,8 +338,14 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("UGNVBSug38s=").unwrap()));
-        assert_eq!(wrmh.data.kids[0].content, BASE64_STANDARD.decode("MlSJV3aYRSNHVmVHKTgjQQ==").unwrap());
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("UGNVBSug38s=").unwrap())
+        );
+        assert_eq!(
+            wrmh.data.kids[0].content,
+            BASE64_STANDARD.decode("MlSJV3aYRSNHVmVHKTgjQQ==").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -265,8 +357,14 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("+FoqZH6Ky4U=").unwrap()));
-        assert_eq!(wrmh.data.kids[0].content, BASE64_STANDARD.decode("rpqUeFVEresmG7b8c0N1Sg==").unwrap());
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("+FoqZH6Ky4U=").unwrap())
+        );
+        assert_eq!(
+            wrmh.data.kids[0].content,
+            BASE64_STANDARD.decode("rpqUeFVEresmG7b8c0N1Sg==").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -278,8 +376,14 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("do8QdfcRC4Q=").unwrap()));
-        assert_eq!(wrmh.data.kids[0].content, BASE64_STANDARD.decode("9f0iCfpqoEGIYV0byEysYA==").unwrap());
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("do8QdfcRC4Q=").unwrap())
+        );
+        assert_eq!(
+            wrmh.data.kids[0].content,
+            BASE64_STANDARD.decode("9f0iCfpqoEGIYV0byEysYA==").unwrap()
+        );
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -290,10 +394,25 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("7MvnnnUtai8=").unwrap()));
-        assert!(wrmh.data.la_url.as_ref().is_some_and(|u| u.contains("anycast.nagra.com")));
-        assert!(wrmh.data.custom_attributes.as_ref().is_some_and(|ca| ca.contains("nv:ContentId")));
-        assert!(wrmh.data.custom_attributes.as_ref().is_some_and(|ca| ca.contains("5712")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("7MvnnnUtai8=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .la_url
+            .as_ref()
+            .is_some_and(|u| u.contains("anycast.nagra.com")));
+        assert!(wrmh
+            .data
+            .custom_attributes
+            .as_ref()
+            .is_some_and(|ca| ca.contains("nv:ContentId")));
+        assert!(wrmh
+            .data
+            .custom_attributes
+            .as_ref()
+            .is_some_and(|ca| ca.contains("5712")));
     }
 
     let boxes = from_base64("AAAD0nBzc2gAAAAAmgTweZhAQoarkuZb4IhflQAAA7KyAwAAAQABAKgDPABXAFIATQBIAEUAQQBEAEUAUgAgAHgAbQBsAG4AcwA9ACIAaAB0AHQAcAA6AC8ALwBzAGMAaABlAG0AYQBzAC4AbQBpAGMAcgBvAHMAbwBmAHQALgBjAG8AbQAvAEQAUgBNAC8AMgAwADAANwAvADAAMwAvAFAAbABhAHkAUgBlAGEAZAB5AEgAZQBhAGQAZQByACIAIAB2AGUAcgBzAGkAbwBuAD0AIgA0AC4AMAAuADAALgAwACIAPgA8AEQAQQBUAEEAPgA8AFAAUgBPAFQARQBDAFQASQBOAEYATwA+ADwASwBFAFkATABFAE4APgAxADYAPAAvAEsARQBZAEwARQBOAD4APABBAEwARwBJAEQAPgBBAEUAUwBDAFQAUgA8AC8AQQBMAEcASQBEAD4APAAvAFAAUgBPAFQARQBDAFQASQBOAEYATwA+ADwASwBJAEQAPgByAG8ASABWAE8ATQBWAGoAMwBFAHkAMQAwADIAbwBWAFgAYwB2AGUASABBAD0APQA8AC8ASwBJAEQAPgA8AEwAQQBfAFUAUgBMAD4AaAB0AHQAcAA6AC8ALwBkAHIAbQAuAGMAYQBuAGEAbAAtAHAAbAB1AHMALgBjAG8AbQAvADwALwBMAEEAXwBVAFIATAA+ADwATABVAEkAXwBVAFIATAA+AGgAdAB0AHAAOgAvAC8AZAByAG0ALgBjAGEAbgBhAGwALQBwAGwAdQBzAC4AYwBvAG0ALwA8AC8ATABVAEkAXwBVAFIATAA+ADwARABTAF8ASQBEAD4AeQBZAEkAUABEAEIAYwBhADEAawBtAE0AZgBMADYAMABJAHMAZgBnAEEAUQA9AD0APAAvAEQAUwBfAEkARAA+ADwAQwBVAFMAVABPAE0AQQBUAFQAUgBJAEIAVQBUAEUAUwAgAHgAbQBsAG4AcwA9ACIAIgA+ADwAZQBuAGMAcgB5AHAAdABpAG8AbgByAGUAZgA+ADEANwAxADEAMQAxADkANgAzADcAPAAvAGUAbgBjAHIAeQBwAHQAaQBvAG4AcgBlAGYAPgA8AC8AQwBVAFMAVABPAE0AQQBUAFQAUgBJAEIAVQBUAEUAUwA+ADwAQwBIAEUAQwBLAFMAVQBNAD4AWQBnAGcAUABzAGEAbABTAHEASgB3AD0APAAvAEMASABFAEMASwBTAFUATQA+ADwALwBEAEEAVABBAD4APAAvAFcAUgBNAEgARQBBAEQARQBSAD4A")
@@ -303,11 +422,30 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("YggPsalSqJw=").unwrap()));
-        assert!(wrmh.data.la_url.as_ref().is_some_and(|u| u.contains("drm.canal-plus.com")));
-        assert!(wrmh.data.lui_url.as_ref().is_some_and(|u| u.contains("drm.canal-plus.com")));
-        assert!(wrmh.data.custom_attributes.as_ref().is_some_and(|ca| ca.contains("<encryptionref>")));
-        assert!(wrmh.data.custom_attributes.as_ref().is_some_and(|ca| ca.contains("1711119637")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("YggPsalSqJw=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .la_url
+            .as_ref()
+            .is_some_and(|u| u.contains("drm.canal-plus.com")));
+        assert!(wrmh
+            .data
+            .lui_url
+            .as_ref()
+            .is_some_and(|u| u.contains("drm.canal-plus.com")));
+        assert!(wrmh
+            .data
+            .custom_attributes
+            .as_ref()
+            .is_some_and(|ca| ca.contains("<encryptionref>")));
+        assert!(wrmh
+            .data
+            .custom_attributes
+            .as_ref()
+            .is_some_and(|ca| ca.contains("1711119637")));
     }
 
     let boxes = from_base64("AAAD4nBzc2gAAAAAmgTweZhAQoarkuZb4IhflQAAA8LCAwAAAQABALgDPABXAFIATQBIAEUAQQBEAEUAUgAgAHgAbQBsAG4AcwA9ACIAaAB0AHQAcAA6AC8ALwBzAGMAaABlAG0AYQBzAC4AbQBpAGMAcgBvAHMAbwBmAHQALgBjAG8AbQAvAEQAUgBNAC8AMgAwADAANwAvADAAMwAvAFAAbABhAHkAUgBlAGEAZAB5AEgAZQBhAGQAZQByACIAIAB2AGUAcgBzAGkAbwBuAD0AIgA0AC4AMAAuADAALgAwACIAPgA8AEQAQQBUAEEAPgA8AFAAUgBPAFQARQBDAFQASQBOAEYATwA+ADwASwBFAFkATABFAE4APgAxADYAPAAvAEsARQBZAEwARQBOAD4APABBAEwARwBJAEQAPgBBAEUAUwBDAFQAUgA8AC8AQQBMAEcASQBEAD4APAAvAFAAUgBPAFQARQBDAFQASQBOAEYATwA+ADwASwBJAEQAPgBQAHoAVwAzAHoAWQBMAHEAMQBFAG0AYgBpAGYANABJAGMASQBLAG4ATgBBAD0APQA8AC8ASwBJAEQAPgA8AEwAQQBfAFUAUgBMAD4AaAB0AHQAcAA6AC8ALwBwAHIALQBrAGUAeQBvAHMALgBsAGkAYwBlAG4AcwBlAGsAZQB5AHMAZQByAHYAZQByAC4AYwBvAG0ALwBjAG8AcgBlAC8AcgBpAGcAaAB0AHMAbQBhAG4AYQBnAGUAcgAuAGEAcwBtAHgAPAAvAEwAQQBfAFUAUgBMAD4APABEAFMAXwBJAEQAPgBWAGwAUgA3AEkAZABzAEkASgBFAHUAUgBkADAANgBMAGEAcQBzADIAagB3AD0APQA8AC8ARABTAF8ASQBEAD4APABDAFUAUwBUAE8ATQBBAFQAVABSAEkAQgBVAFQARQBTACAAeABtAGwAbgBzAD0AIgAiAD4APABDAEkARAA+AFAAegBXADMAegBZAEwAcQAxAEUAbQBiAGkAZgA0AEkAYwBJAEsAbgBOAEEAPQA9ADwALwBDAEkARAA+ADwARABSAE0AVABZAFAARQA+AHMAbQBvAG8AdABoADwALwBEAFIATQBUAFkAUABFAD4APAAvAEMAVQBTAFQATwBNAEEAVABUAFIASQBCAFUAVABFAFMAPgA8AEMASABFAEMASwBTAFUATQA+AGgAVABWAGgAWAA5AEgANwBnAEsAMAA9ADwALwBDAEgARQBDAEsAUwBVAE0APgA8AC8ARABBAFQAQQA+ADwALwBXAFIATQBIAEUAQQBEAEUAUgA+AA==")
@@ -318,14 +456,27 @@ fn test_parsing_playready_v0() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("hTVhX9H7gK0=").unwrap()));
-        assert!(wrmh.data.la_url.as_ref().is_some_and(|u| u.contains("pr-keyos.licensekeyserver.com")));
-        assert!(wrmh.data.custom_attributes.as_ref().is_some_and(|ca| ca.contains("<CID>PzW3zYLq1Embif4IcIKnNA==</CID>")));
-        assert!(wrmh.data.custom_attributes.as_ref().is_some_and(|ca| ca.contains("<DRMTYPE>smooth</DRMTYPE>")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("hTVhX9H7gK0=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .la_url
+            .as_ref()
+            .is_some_and(|u| u.contains("pr-keyos.licensekeyserver.com")));
+        assert!(wrmh
+            .data
+            .custom_attributes
+            .as_ref()
+            .is_some_and(|ca| ca.contains("<CID>PzW3zYLq1Embif4IcIKnNA==</CID>")));
+        assert!(wrmh
+            .data
+            .custom_attributes
+            .as_ref()
+            .is_some_and(|ca| ca.contains("<DRMTYPE>smooth</DRMTYPE>")));
     }
 }
-
-
 
 #[test]
 fn test_parsing_playready_v1() {
@@ -334,12 +485,22 @@ fn test_parsing_playready_v1() {
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("840d5cc9fa4523a83164451c615b206a").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("840d5cc9fa4523a83164451c615b206a").unwrap()
+    );
     println!("PLAYREADY-v1> {pssh:?}");
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("7zDsYfDVHUY=").unwrap()));
-        assert!(wrmh.data.lui_url.as_ref().is_some_and(|s| s.contains("playready-license.vudrm.tech")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("7zDsYfDVHUY=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .lui_url
+            .as_ref()
+            .is_some_and(|s| s.contains("playready-license.vudrm.tech")));
     }
     assert!(boxes.contains(&boxes[0]));
 
@@ -350,7 +511,6 @@ fn test_parsing_playready_v1() {
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
     assert!(boxes.contains(&boxes[0]));
 }
-
 
 #[test]
 fn test_parsing_nagra() {
@@ -442,11 +602,9 @@ fn test_parsing_nagra() {
     }
 }
 
-
 #[test]
 fn test_parsing_marlin() {
-    let boxes = from_base64("AAAAKHBzc2gAAAAAXmKa9TjaQGOJd5f/vZkC1AAAAAgAAAAIbWFybA==")
-        .unwrap();
+    let boxes = from_base64("AAAAKHBzc2gAAAAAXmKa9TjaQGOJd5f/vZkC1AAAAAgAAAAIbWFybA==").unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     println!("MARLIN> {pssh:?}");
@@ -455,7 +613,6 @@ fn test_parsing_marlin() {
     assert!(boxes[0] == boxes[0]);
     assert!(boxes.contains(&boxes[0]));
 }
-
 
 #[test]
 fn test_parsing_irdeto() {
@@ -468,7 +625,9 @@ fn test_parsing_irdeto() {
     assert_eq!(pssh.system_id, IRDETO_SYSTEM_ID);
     if let PsshData::Irdeto(ref pd) = pssh.pssh_data {
         assert!(pd.xml.contains("<CCARMHEADER"));
-        assert!(pd.xml.contains("YzY4Y2FlYmYtNjY4NC1hYmFlLTBhOGMtZjQ0M2I3YTRiMDA4"));
+        assert!(pd
+            .xml
+            .contains("YzY4Y2FlYmYtNjY4NC1hYmFlLTBhOGMtZjQ0M2I3YTRiMDA4"));
         assert!(pd.xml.contains("CCIS_URL"));
     }
     assert!(boxes.contains(&boxes[0]));
@@ -520,46 +679,62 @@ fn test_parsing_wiseplay() {
 
 #[test]
 fn test_parsing_commonenc_v1() {
-    let boxes = from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAEJIv31avpBoIhhXRvITKxgAAAAAA==")
-        .unwrap();
+    let boxes =
+        from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAEJIv31avpBoIhhXRvITKxgAAAAAA==")
+            .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     println!("COMMON> {pssh:?}");
     pprint(&pssh);
     assert_eq!(pssh.version, 1);
     assert_eq!(pssh.system_id, COMMON_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("0922fdf56afa41a088615d1bc84cac60").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("0922fdf56afa41a088615d1bc84cac60").unwrap()
+    );
     assert!(boxes.contains(&boxes[0]));
 
-    let boxes = from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAFDIVZ4EjQSNBI0EjQSNBI0AAAAAA==")
-        .unwrap();
+    let boxes =
+        from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAFDIVZ4EjQSNBI0EjQSNBI0AAAAAA==")
+            .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     assert_eq!(pssh.version, 1);
     println!("COMMON> {pssh:?}");
     pprint(&pssh);
     assert_eq!(pssh.system_id, COMMON_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("43215678123412341234123412341234").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("43215678123412341234123412341234").unwrap()
+    );
     assert!(boxes.contains(&boxes[0]));
 
-    let boxes = from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAEGIiktu8FDpJ7ktijIam1uAAAAAA==")
-        .unwrap();
+    let boxes =
+        from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAEGIiktu8FDpJ7ktijIam1uAAAAAA==")
+            .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     println!("COMMON> {pssh:?}");
     pprint(&pssh);
     assert_eq!(pssh.system_id, COMMON_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("0622292dbbc143a49ee4b628c86a6d6e").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("0622292dbbc143a49ee4b628c86a6d6e").unwrap()
+    );
     assert!(boxes.contains(&boxes[0]));
 
-    let boxes = from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAE41YGuY8VM3LXTahVdy94cAAAAAA==")
-        .unwrap();
+    let boxes =
+        from_base64("AAAANHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAAAE41YGuY8VM3LXTahVdy94cAAAAAA==")
+            .unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     println!("COMMON> {pssh:?}");
     pprint(&pssh);
     assert_eq!(pssh.system_id, COMMON_SYSTEM_ID);
-    assert_eq!(pssh.key_ids[0], DRMKeyId::try_from("38d581ae63c54cdcb5d36a155dcbde1c").unwrap());
+    assert_eq!(
+        pssh.key_ids[0],
+        DRMKeyId::try_from("38d581ae63c54cdcb5d36a155dcbde1c").unwrap()
+    );
 
     let boxes = from_base64("AAABJHBzc2gBAAAAEHfv7MCyTQKs4zweUuL7SwAAABAFo6CpeLw88YLCEc18zO70BaOgqXi8PPGCwhHNfMzu9QWjoKl4vDzxgsIRzXzM7vYFo6CpeLw88YLCEc18zO73AAAAAAAAAAAAAAAAAAAAAHsidiI6IjIiLCJmaWQiOiJoXzExMDBoemdkMDAxNDZhIiwicGwiOiJleUp3YVdRaU9pSm9YekV4TURCb2VtZGtNREF4TkRaaElpd2laR1ZzYVhabGNubGZkSGx3WlNJNkluTjBJbjAiLCJzdmlkIjoiZGlnaXRhbCIsImNzIjoiZGQxMTQzMjcyOTU4ODZmNjYxYmYxZDBiNWExZjE3YjQifQAAAAAAAAAAAAAAAAAAAAAAAA==")
         .unwrap();
@@ -577,17 +752,15 @@ fn test_parsing_commonenc_v1() {
     assert_eq!(pssh.system_id, COMMON_SYSTEM_ID);
     assert_eq!(pssh.key_ids.len(), 12);
     let wanted = DRMKeyId::try_from("68756e74613030333035222c22737669").unwrap();
-    assert!(pssh.key_ids.iter()
-            .find(|k| **k == wanted)
-            .is_some());
+    assert!(pssh.key_ids.iter().find(|k| **k == wanted).is_some());
 }
 
 // The FairPlay DRM system has very little public information available nor sample PSSH boxes. This
 // is a sample PSSH from the FairPlay PSSH system as used by Netflix.
 #[test]
 fn test_parsing_fairplay() {
-    let boxes = from_hex("00000020707373680000000029701FE43CC74A348C5BAE90C7439A4700000000")
-        .unwrap();
+    let boxes =
+        from_hex("00000020707373680000000029701FE43CC74A348C5BAE90C7439A4700000000").unwrap();
     assert_eq!(boxes.len(), 1);
     let pssh = &boxes[0];
     println!("FairPlay> {pssh:?}");
@@ -597,7 +770,6 @@ fn test_parsing_fairplay() {
     assert!(boxes.contains(&boxes[0]));
 }
 
-
 #[test]
 fn test_parsing_multisystem() {
     let boxes = from_base64("AAAAQHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACAiGFlPVVRVQkU6NTM5ZjEyZjRhM2IzMTczYkjj3JWbBgAAAvRwc3NoAAAAAJoE8HmYQEKGq5LmW+CIX5UAAALU1AIAAAEAAQDKAjwAVwBSAE0ASABFAEEARABFAFIAIAB4AG0AbABuAHMAPQAiAGgAdAB0AHAAOgAvAC8AcwBjAGgAZQBtAGEAcwAuAG0AaQBjAHIAbwBzAG8AZgB0AC4AYwBvAG0ALwBEAFIATQAvADIAMAAwADcALwAwADMALwBQAGwAYQB5AFIAZQBhAGQAeQBIAGUAYQBkAGUAcgAiACAAdgBlAHIAcwBpAG8AbgA9ACIANAAuADAALgAwAC4AMAAiAD4APABEAEEAVABBAD4APABQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsARQBZAEwARQBOAD4AMQA2ADwALwBLAEUAWQBMAEUATgA+ADwAQQBMAEcASQBEAD4AQQBFAFMAQwBUAFIAPAAvAEEATABHAEkARAA+ADwALwBQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsASQBEAD4AdwB3AFQASwA0AFMAbwBkAEYAVgArAFgAMQAwAHYAYQBjAFMAQgBFAEcAUQA9AD0APAAvAEsASQBEAD4APABDAEgARQBDAEsAUwBVAE0APgA1AGsASgArADcANgBDAHEAYQB0AHMAPQA8AC8AQwBIAEUAQwBLAFMAVQBNAD4APABMAEEAXwBVAFIATAA+AGgAdAB0AHAAcwA6AC8ALwB3AHcAdwAuAHkAbwB1AHQAdQBiAGUALgBjAG8AbQAvAGEAcABpAC8AZAByAG0ALwBwAGwAYQB5AHIAZQBhAGQAeQA/AHMAbwB1AHIAYwBlAD0AWQBPAFUAVABVAEIARQAmAGEAbQBwADsAdgBpAGQAZQBvAF8AaQBkAD0ANQAzADkAZgAxADIAZgA0AGEAMwBiADMAMQA3ADMAYgA8AC8ATABBAF8AVQBSAEwAPgA8AC8ARABBAFQAQQA+ADwALwBXAFIATQBIAEUAQQBEAEUAUgA+AA==")
@@ -606,7 +778,10 @@ fn test_parsing_multisystem() {
     let wv_pssh = &boxes[0];
     assert_eq!(wv_pssh.system_id, WIDEVINE_SYSTEM_ID);
     if let PsshData::Widevine(ref pd) = wv_pssh.pssh_data {
-        assert_eq!(pd.content_id, Some(hex::decode("594f55545542453a35333966313266346133623331373362").unwrap()));
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("594f55545542453a35333966313266346133623331373362").unwrap())
+        );
     }
     assert!(boxes.contains(&boxes[0]));
     assert!(boxes.contains(&boxes[1]));
@@ -615,8 +790,15 @@ fn test_parsing_multisystem() {
     assert_eq!(pr_pssh.system_id, PLAYREADY_SYSTEM_ID);
     if let PsshData::PlayReady(ref pd) = pr_pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("5kJ+76Cqats=").unwrap()));
-        assert!(wrmh.data.la_url.as_ref().is_some_and(|s| s.contains("youtube.com")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("5kJ+76Cqats=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .la_url
+            .as_ref()
+            .is_some_and(|s| s.contains("youtube.com")));
     }
 
     let boxes = from_base64("AAAAQHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACAiGFlPVVRVQkU6NTM5ZjEyZjRhM2IzMTczYkjj3JWbBgAAAvRwc3NoAAAAAJoE8HmYQEKGq5LmW+CIX5UAAALU1AIAAAEAAQDKAjwAVwBSAE0ASABFAEEARABFAFIAIAB4AG0AbABuAHMAPQAiAGgAdAB0AHAAOgAvAC8AcwBjAGgAZQBtAGEAcwAuAG0AaQBjAHIAbwBzAG8AZgB0AC4AYwBvAG0ALwBEAFIATQAvADIAMAAwADcALwAwADMALwBQAGwAYQB5AFIAZQBhAGQAeQBIAGUAYQBkAGUAcgAiACAAdgBlAHIAcwBpAG8AbgA9ACIANAAuADAALgAwAC4AMAAiAD4APABEAEEAVABBAD4APABQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsARQBZAEwARQBOAD4AMQA2ADwALwBLAEUAWQBMAEUATgA+ADwAQQBMAEcASQBEAD4AQQBFAFMAQwBUAFIAPAAvAEEATABHAEkARAA+ADwALwBQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsASQBEAD4AdwB3AFQASwA0AFMAbwBkAEYAVgArAFgAMQAwAHYAYQBjAFMAQgBFAEcAUQA9AD0APAAvAEsASQBEAD4APABDAEgARQBDAEsAUwBVAE0APgA1AGsASgArADcANgBDAHEAYQB0AHMAPQA8AC8AQwBIAEUAQwBLAFMAVQBNAD4APABMAEEAXwBVAFIATAA+AGgAdAB0AHAAcwA6AC8ALwB3AHcAdwAuAHkAbwB1AHQAdQBiAGUALgBjAG8AbQAvAGEAcABpAC8AZAByAG0ALwBwAGwAYQB5AHIAZQBhAGQAeQA/AHMAbwB1AHIAYwBlAD0AWQBPAFUAVABVAEIARQAmAGEAbQBwADsAdgBpAGQAZQBvAF8AaQBkAD0ANQAzADkAZgAxADIAZgA0AGEAMwBiADMAMQA3ADMAYgA8AC8ATABBAF8AVQBSAEwAPgA8AC8ARABBAFQAQQA+ADwALwBXAFIATQBIAEUAQQBEAEUAUgA+AA==")
@@ -627,7 +809,10 @@ fn test_parsing_multisystem() {
     println!("PLAYREADY-v1(1)> {pssh:?}");
     assert_eq!(pssh.flags, 0);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert_eq!(pd.content_id, Some(hex::decode("594f55545542453a35333966313266346133623331373362").unwrap()));
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("594f55545542453a35333966313266346133623331373362").unwrap())
+        );
     }
     let pssh = &boxes[1];
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
@@ -635,23 +820,27 @@ fn test_parsing_multisystem() {
     assert_eq!(pssh.flags, 0);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("5kJ+76Cqats=").unwrap()));
-        assert!(wrmh.data.la_url.as_ref().is_some_and(|s| s.contains("youtube.com")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("5kJ+76Cqats=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .la_url
+            .as_ref()
+            .is_some_and(|s| s.contains("youtube.com")));
     }
 }
-
 
 #[test]
 fn test_parsing_concatenated_erroneous() {
     assert!(from_base64("AAAAQHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACAiGFlPVVRVQkU6ZDVlMjNlZDMzMWZjNjFiN0jj3JWbBgAAAvRwc3NoAAAAAJoE8HmYQEKGq5LmW+CIX5UAAALU1AIAAAEAAQDKAjwAVwBSAE0ASABFAEEARABFAFIAIAB4AG0AbABuAHMAPQAiAGgAdAB0AHAAOgAvAC8AcwBjAGgAZQBtAGEAcwAuAG0AaQBjAHIAbwBzAG8AZgB0AC4AYwBvAG0ALwBEAFIATQAvADIAMAAwADcALwAwADMALwBQAGwAYQB5AFIAZQBhAGQAeQBIAGUAYQBkAGUAcgAiACAAdgBlAHIAcwBpAG8AbgA9ACIANAAuADAALgAwAC4AMAAiAD4APABEAEEAVABBAD4APABQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsARQBZAEwARQBOAD4AMQA2ADwALwBLAEUAWQBMAEUATgA+ADwAQQBMAEcASQBEAD4AQQBFAFMAQwBUAFIAPAAvAEEATABHAEkARAA+ADwALwBQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsASQBEAD4AaQBRAGMAeAA3AHEAMQBoAEIARgBTAG4AUQBjAHQAOAB2AEwAKwBPAFYAQQA9AD0APAAvAEsASQBEAD4APABDAEgARQBDAEsAUwBVAE0APgBoAHUAZgBGAFMAdQBSAFoAQgBqAHMAPQA8AC8AQwBIAEUAQwBLAFMAVQBNAD4APABMAEEAXwBVAFIATAA+AGgAdAB0AHAAcwA6AC8ALwB3AHcAdwAuAHkAbwB1AHQAdQBiAGUALgBjAG8AbQAvAGEAcABpAC8AZAByAG0ALwBwAGwAYQB5AHIAZQBhAGQAeQA/AHMAbwB1AHIAYwBlAD0AWQBPAFUAVABVAEIARQAmAGEAbQBwADsAdgBpAGQAZQBvAF8AaQBkAD0AZAA1AGUAMgAzAGUAZAAzADMAMQBmAGMANgAxAGIANwA8AC8ATABBA").is_err());
 }
 
-
 #[test]
 fn test_parsing_erroneous() {
     assert!(from_base64("bXlfcHNzaA==").is_err());
 }
-
 
 #[test]
 fn test_find_iter() {
@@ -676,7 +865,10 @@ fn test_find_iter() {
     println!("PLAYREADY-v1(1)> {pssh:?}");
     assert_eq!(pssh.flags, 0);
     if let PsshData::Widevine(ref pd) = pssh.pssh_data {
-        assert_eq!(pd.content_id, Some(hex::decode("594f55545542453a35333966313266346133623331373362").unwrap()));
+        assert_eq!(
+            pd.content_id,
+            Some(hex::decode("594f55545542453a35333966313266346133623331373362").unwrap())
+        );
     }
     let pssh = &boxes[1];
     assert_eq!(pssh.system_id, PLAYREADY_SYSTEM_ID);
@@ -684,13 +876,48 @@ fn test_find_iter() {
     assert_eq!(pssh.flags, 0);
     if let PsshData::PlayReady(ref pd) = pssh.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("5kJ+76Cqats=").unwrap()));
-        assert!(wrmh.data.la_url.as_ref().is_some_and(|s| s.contains("youtube.com")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("5kJ+76Cqats=").unwrap())
+        );
+        assert!(wrmh
+            .data
+            .la_url
+            .as_ref()
+            .is_some_and(|s| s.contains("youtube.com")));
     }
     assert!(boxes.contains(&boxes[0]));
     assert!(boxes.contains(&boxes[1]));
 }
 
+#[test]
+fn test_find_iter_with_corrupted_size() {
+    // Test that find_iter doesn't panic with corrupted size field
+    // This tests the fix for array out-of-bounds issue with large files
+    let mut buffer = Vec::new();
+
+    // Size field (4 bytes) - set to a very large value that exceeds buffer length
+    buffer.extend_from_slice(&u32::to_be_bytes(0xFFFFFFFF));
+
+    // "pssh" header
+    buffer.extend_from_slice(b"pssh");
+
+    // Add some more bytes
+    buffer.extend_from_slice(&[0u8; 100]);
+
+    // This should not panic - it should simply filter out the invalid box
+    let positions: Vec<usize> = find_iter(&buffer).collect();
+    assert_eq!(positions.len(), 0);
+
+    // Test with a size that's larger than buffer but not maximum
+    let mut buffer2 = Vec::new();
+    buffer2.extend_from_slice(&u32::to_be_bytes(1000)); // Size larger than actual buffer
+    buffer2.extend_from_slice(b"pssh");
+    buffer2.extend_from_slice(&[0u8; 100]);
+
+    let positions2: Vec<usize> = find_iter(&buffer2).collect();
+    assert_eq!(positions2.len(), 0);
+}
 
 #[test]
 fn test_partialeq() {

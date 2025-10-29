@@ -1,15 +1,22 @@
-/// Tests for the serialization functionality
-
-use test_log::test;
 use pssh_box::{from_base64, DRMKeyId, DRMSystemId};
-use pssh_box::{WIDEVINE_SYSTEM_ID, COMMON_SYSTEM_ID};
-
+use pssh_box::{COMMON_SYSTEM_ID, WIDEVINE_SYSTEM_ID};
+/// Tests for the serialization functionality
+use test_log::test;
 
 #[test]
 fn test_serialization_systemid() {
-    assert_eq!(COMMON_SYSTEM_ID, DRMSystemId::try_from("1077efecc0b24d02ace33c1e52e2fb4b").unwrap());
-    assert_eq!(WIDEVINE_SYSTEM_ID, DRMSystemId::try_from("edef8ba979d64acea3c827dcd51d21ed").unwrap());
-    assert_eq!(WIDEVINE_SYSTEM_ID, DRMSystemId::try_from("EDEF8BA979D64ACEA3C827DCD51D21ED").unwrap());
+    assert_eq!(
+        COMMON_SYSTEM_ID,
+        DRMSystemId::try_from("1077efecc0b24d02ace33c1e52e2fb4b").unwrap()
+    );
+    assert_eq!(
+        WIDEVINE_SYSTEM_ID,
+        DRMSystemId::try_from("edef8ba979d64acea3c827dcd51d21ed").unwrap()
+    );
+    assert_eq!(
+        WIDEVINE_SYSTEM_ID,
+        DRMSystemId::try_from("EDEF8BA979D64ACEA3C827DCD51D21ED").unwrap()
+    );
 
     let wvs = WIDEVINE_SYSTEM_ID.to_string();
     assert!(wvs.contains("Widevine"));
@@ -19,11 +26,19 @@ fn test_serialization_systemid() {
 
 #[test]
 fn test_serialization_drmkeyid() {
-    assert_eq!("DRMKeyId<72c3ed2c-7a5f-4aad-902f-cbef1efe89a9>",
-               DRMKeyId::try_from("72c3ed2c7a5f4aad902fcbef1efe89a9").unwrap().to_string());
+    assert_eq!(
+        "DRMKeyId<72c3ed2c-7a5f-4aad-902f-cbef1efe89a9>",
+        DRMKeyId::try_from("72c3ed2c7a5f4aad902fcbef1efe89a9")
+            .unwrap()
+            .to_string()
+    );
 
-    assert_eq!("DRMKeyId<72c3ed2c-7a5f-4aad-902f-cbef1efe89a9>",
-               DRMKeyId::try_from("72c3ed2c-7a5f-4aad-902f-cbef1efe89a9").unwrap().to_string());
+    assert_eq!(
+        "DRMKeyId<72c3ed2c-7a5f-4aad-902f-cbef1efe89a9>",
+        DRMKeyId::try_from("72c3ed2c-7a5f-4aad-902f-cbef1efe89a9")
+            .unwrap()
+            .to_string()
+    );
 }
 
 #[test]
@@ -38,7 +53,6 @@ fn test_serialization_pssh() {
     assert_eq!(boxes.to_hex(),
                "000000387073736800000000edef8ba979d64acea3c827dcd51d21ed000000181210001637069fb5d1ac3c4747e01322e4c248e3dc959b06");
 }
-
 
 #[test]
 fn test_serialization_psshdata() {
@@ -71,5 +85,3 @@ fn test_serialization_psshdata() {
     assert!(serialized.contains("MlSJV3aYRSNHVmVHKTgjQQ=="));
     assert!(serialized.contains("AESCTR"));
 }
-
-

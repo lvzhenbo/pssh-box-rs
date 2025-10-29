@@ -28,30 +28,28 @@
 //! content key, the encryption scheme used (e.g. cenc, cbc1, cens or cbcs), the URL of the licence
 //! server, and checksum data.
 
-
-pub mod playready;
-pub mod widevine;
 pub mod irdeto;
 pub mod nagra;
+pub mod playready;
+pub mod widevine;
 pub mod wiseplay;
 
-use std::fmt;
-use std::io::{Cursor, Read, Write};
-use hex_literal::hex;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use zerocopy::FromBytes;
-use serde::{Serialize, Deserialize};
-use prost::Message;
-use base64::prelude::{Engine as _, BASE64_STANDARD};
-use base64::engine;
-use anyhow::{Result, Context, anyhow};
-use tracing::trace;
-use crate::widevine::WidevinePsshData;
-use crate::playready::PlayReadyPsshData;
 use crate::irdeto::IrdetoPsshData;
 use crate::nagra::NagraPsshData;
+use crate::playready::PlayReadyPsshData;
+use crate::widevine::WidevinePsshData;
 use crate::wiseplay::WisePlayPsshData;
-
+use anyhow::{anyhow, Context, Result};
+use base64::engine;
+use base64::prelude::{Engine as _, BASE64_STANDARD};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use hex_literal::hex;
+use prost::Message;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::io::{Cursor, Read, Write};
+use tracing::trace;
+use zerocopy::FromBytes;
 
 /// The version of this crate.
 pub fn version() -> &'static str {
@@ -137,7 +135,7 @@ impl fmt::Display for PsshData {
                     }
                 }
                 write!(f, "WidevinePSSHData<{}>", items.join(", "))
-            },
+            }
             PsshData::PlayReady(pr) => write!(f, "PlayReadyPSSHData<{pr:?}>"),
             PsshData::Irdeto(pd) => write!(f, "IrdetoPSSHData<{}>", pd.xml),
             PsshData::Marlin(pd) => write!(f, "  MarlinPSSHData<len {} octets>", pd.len()),
@@ -247,9 +245,16 @@ impl fmt::Display for DRMSystemId {
             "Unknown"
         };
         let hex = hex::encode(self.id);
-        write!(f, "{}/DRMSystemId<{}-{}-{}-{}-{}>",
-               family,
-               &hex[0..8], &hex[8..12], &hex[12..16], &hex[16..20], &hex[20..32])
+        write!(
+            f,
+            "{}/DRMSystemId<{}-{}-{}-{}-{}>",
+            family,
+            &hex[0..8],
+            &hex[8..12],
+            &hex[12..16],
+            &hex[16..20],
+            &hex[20..32]
+        )
     }
 }
 
@@ -259,15 +264,33 @@ impl fmt::Debug for DRMSystemId {
     }
 }
 
-pub const COMMON_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("1077efecc0b24d02ace33c1e52e2fb4b") };
-pub const CENC_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("69f908af481646ea910ccd5dcccb0a3a") };
-pub const WIDEVINE_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("edef8ba979d64acea3c827dcd51d21ed") };
-pub const PLAYREADY_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("9a04f07998404286ab92e65be0885f95") };
-pub const FAIRPLAYNFLX_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("29701fe43cc74a348c5bae90c7439a47") };
-pub const IRDETO_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("80a6be7e14484c379e70d5aebe04c8d2") };
-pub const MARLIN_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("5e629af538da4063897797ffbd9902d4") };
-pub const NAGRA_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("adb41c242dbf4a6d958b4457c0d27b95") };
-pub const WISEPLAY_SYSTEM_ID: DRMSystemId = DRMSystemId { id: hex!("3d5e6d359b9a41e8b843dd3c6e72c42c") };
+pub const COMMON_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("1077efecc0b24d02ace33c1e52e2fb4b"),
+};
+pub const CENC_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("69f908af481646ea910ccd5dcccb0a3a"),
+};
+pub const WIDEVINE_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("edef8ba979d64acea3c827dcd51d21ed"),
+};
+pub const PLAYREADY_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("9a04f07998404286ab92e65be0885f95"),
+};
+pub const FAIRPLAYNFLX_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("29701fe43cc74a348c5bae90c7439a47"),
+};
+pub const IRDETO_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("80a6be7e14484c379e70d5aebe04c8d2"),
+};
+pub const MARLIN_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("5e629af538da4063897797ffbd9902d4"),
+};
+pub const NAGRA_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("adb41c242dbf4a6d958b4457c0d27b95"),
+};
+pub const WISEPLAY_SYSTEM_ID: DRMSystemId = DRMSystemId {
+    id: hex!("3d5e6d359b9a41e8b843dd3c6e72c42c"),
+};
 
 /// The Content Key or default_KID.
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, FromBytes)]
@@ -311,11 +334,7 @@ impl TryFrom<&str> for DRMKeyId {
         // UUID-style format, like 5ade6a1e-c0d4-43c6-92f2-2d36862ba8dd
         if value.len() == 36 {
             let v36 = value.as_bytes();
-            if v36[8] == b'-' &&
-                v36[13] == b'-' &&
-                v36[18] == b'-' &&
-                v36[23] == b'-'
-            {
+            if v36[8] == b'-' && v36[13] == b'-' && v36[18] == b'-' && v36[23] == b'-' {
                 let maybe_hex = value.replace('-', "");
                 if let Ok(id) = hex::decode(maybe_hex) {
                     return DRMKeyId::try_from(id);
@@ -336,8 +355,15 @@ impl fmt::Display for DRMKeyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // example: 72c3ed2c-7a5f-4aad-902f-cbef1efe89a9
         let hex = hex::encode(self.id);
-        write!(f, "DRMKeyId<{}-{}-{}-{}-{}>",
-               &hex[0..8], &hex[8..12], &hex[12..16], &hex[16..20], &hex[20..32])
+        write!(
+            f,
+            "DRMKeyId<{}-{}-{}-{}-{}>",
+            &hex[0..8],
+            &hex[8..12],
+            &hex[12..16],
+            &hex[16..20],
+            &hex[20..32]
+        )
     }
 }
 
@@ -346,7 +372,6 @@ impl fmt::Debug for DRMKeyId {
         write!(f, "DRMKeyId<{}>", hex::encode(self.id))
     }
 }
-
 
 /// A PSSH box, also called a ProtectionSystemSpecificHeaderBox in ISO 23001-7:2012.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -448,18 +473,27 @@ impl fmt::Display for PsshBox {
                     }
                 }
                 write!(f, "WidevinePSSH<{}>", items.join(", "))
-            },
+            }
             PsshData::PlayReady(pr) => write!(f, "PlayReadyPSSH<{key_str}{pr:?}>"),
             PsshData::Irdeto(pd) => write!(f, "IrdetoPSSH<{key_str}{}>", pd.xml),
-            PsshData::Marlin(pd) => write!(f, "  MarlinPSSH<{key_str}pssh data len {} octets>", pd.len()),
+            PsshData::Marlin(pd) => write!(
+                f,
+                "  MarlinPSSH<{key_str}pssh data len {} octets>",
+                pd.len()
+            ),
             PsshData::Nagra(pd) => write!(f, "NagraPSSH<{key_str}{pd:?}>"),
             PsshData::WisePlay(pd) => write!(f, "WisePlayPSSH<{key_str}{}>", pd.json),
-            PsshData::CommonEnc(pd) => write!(f, "CommonPSSH<{key_str}pssh data len {} octets>", pd.len()),
-            PsshData::FairPlay(pd) => write!(f, "FairPlayPSSH<{key_str}pssh data len {} octets>", pd.len()),
+            PsshData::CommonEnc(pd) => {
+                write!(f, "CommonPSSH<{key_str}pssh data len {} octets>", pd.len())
+            }
+            PsshData::FairPlay(pd) => write!(
+                f,
+                "FairPlayPSSH<{key_str}pssh data len {} octets>",
+                pd.len()
+            ),
         }
     }
 }
-
 
 impl ToBytes for PsshBox {
     #[allow(unused_must_use)]
@@ -493,7 +527,6 @@ impl ToBytes for PsshBox {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PsshBoxVec(Vec<PsshBox>);
 
@@ -518,7 +551,7 @@ impl PsshBoxVec {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&PsshBox>{
+    pub fn iter(&self) -> impl Iterator<Item = &PsshBox> {
         self.0.iter()
     }
 
@@ -582,7 +615,8 @@ pub fn from_base64(init_data: &str) -> Result<PsshBoxVec> {
     let b64_tolerant_config = engine::GeneralPurposeConfig::new()
         .with_decode_allow_trailing_bits(true)
         .with_decode_padding_mode(engine::DecodePaddingMode::Indifferent);
-    let b64_tolerant_engine = engine::GeneralPurpose::new(&base64::alphabet::STANDARD, b64_tolerant_config);
+    let b64_tolerant_engine =
+        engine::GeneralPurpose::new(&base64::alphabet::STANDARD, b64_tolerant_config);
     if init_data.len() < 8 {
         return Err(anyhow!("insufficient length for init data"));
     }
@@ -597,25 +631,33 @@ pub fn from_base64(init_data: &str) -> Result<PsshBoxVec> {
     let mut start = 0;
     let mut boxes = Vec::new();
     while start < total_len - 1 {
-        let buf = b64_tolerant_engine.decode(&init_data[start..start+7])
+        let buf = b64_tolerant_engine
+            .decode(&init_data[start..start + 7])
             .context("base64 decoding first 32-bit length word")?;
         let mut rdr = Cursor::new(buf);
-        let box_size: u32 = rdr.read_u32::<BigEndian>()
+        let box_size: u32 = rdr
+            .read_u32::<BigEndian>()
             .context("reading PSSH box size")?;
         trace!("box size from header = {box_size}");
         // The number of octets that we obtain from decoding box_size chars worth of base64
         let wanted_octets = (box_size.div_ceil(3) * 4) as usize;
         let end = start + wanted_octets;
-        trace!("attempting to decode {wanted_octets} octets out of {}", init_data.len());
+        trace!(
+            "attempting to decode {wanted_octets} octets out of {}",
+            init_data.len()
+        );
         if end > init_data.len() {
             // FIXME actually we shouldn't fail here, but rather break and return any boxes that we
             // did manage to parse
-            return Err(anyhow!("insufficient length for init data (wanted {end}, have {})", init_data.len()));
+            return Err(anyhow!(
+                "insufficient length for init data (wanted {end}, have {})",
+                init_data.len()
+            ));
         }
-        let buf = b64_tolerant_engine.decode(&init_data[start..end])
+        let buf = b64_tolerant_engine
+            .decode(&init_data[start..end])
             .context("decoding base64")?;
-        let bx = from_bytes(&buf)
-            .context("parsing the PSSH initialization data")?;
+        let bx = from_bytes(&buf).context("parsing the PSSH initialization data")?;
         assert!(bx.len() == 1);
         trace!("Got one box {}", bx[0].clone());
         boxes.push(bx[0].clone());
@@ -626,15 +668,14 @@ pub fn from_base64(init_data: &str) -> Result<PsshBoxVec> {
 
 /// Parse one or more PSSH boxes from some initialization data encoded in hex format.
 pub fn from_hex(init_data: &str) -> Result<PsshBoxVec> {
-    let buf = hex::decode(init_data)
-        .context("decoding hex")?;
-    from_bytes(&buf)
-        .context("parsing the PSSH initialization_data")
+    let buf = hex::decode(init_data).context("decoding hex")?;
+    from_bytes(&buf).context("parsing the PSSH initialization_data")
 }
 
 /// Parse a single PSSH box.
 fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
-    let size: u32 = rdr.read_u32::<BigEndian>()
+    let size: u32 = rdr
+        .read_u32::<BigEndian>()
         .context("reading PSSH box size")?;
     trace!("PSSH box of size {size} octets");
     let mut box_header = [0u8; 4];
@@ -644,7 +685,8 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
     if !box_header.eq(b"pssh") {
         return Err(anyhow!("expecting BMFF header"));
     }
-    let version_and_flags: u32 = rdr.read_u32::<BigEndian>()
+    let version_and_flags: u32 = rdr
+        .read_u32::<BigEndian>()
         .context("reading PSSH version/flags")?;
     let version: u8 = (version_and_flags >> 24).try_into().unwrap();
     trace!("PSSH box version {version}");
@@ -657,22 +699,22 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
     let system_id = DRMSystemId { id: system_id_buf };
     let mut key_ids = Vec::new();
     if version == 1 {
-        let mut kid_count = rdr.read_u32::<BigEndian>()
-            .context("reading KID count")?;
+        let mut kid_count = rdr.read_u32::<BigEndian>().context("reading KID count")?;
         trace!("PSSH box has {kid_count} KIDs in box header");
         while kid_count > 0 {
             let mut key = [0u8; 16];
-            rdr.read_exact(&mut key)
-                .context("reading key_id")?;
+            rdr.read_exact(&mut key).context("reading key_id")?;
             key_ids.push(DRMKeyId { id: key });
             kid_count -= 1;
         }
     }
-    let pssh_data_len = rdr.read_u32::<BigEndian>()
+    let pssh_data_len = rdr
+        .read_u32::<BigEndian>()
         .context("reading PSSH data length")?;
     trace!("PSSH box data length {pssh_data_len} octets");
     let mut pssh_data = Vec::new();
-    rdr.take(pssh_data_len.into()).read_to_end(&mut pssh_data)
+    rdr.take(pssh_data_len.into())
+        .read_to_end(&mut pssh_data)
         .context("extracting PSSH data")?;
     match system_id {
         WIDEVINE_SYSTEM_ID => {
@@ -685,10 +727,10 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
                 key_ids,
                 pssh_data: PsshData::Widevine(wv_pssh_data),
             })
-        },
+        }
         PLAYREADY_SYSTEM_ID => {
-            let pr_pssh_data = playready::parse_pssh_data(&pssh_data)
-                .context("parsing PlayReady PSSH data")?;
+            let pr_pssh_data =
+                playready::parse_pssh_data(&pssh_data).context("parsing PlayReady PSSH data")?;
             Ok(PsshBox {
                 version,
                 flags: version_and_flags & 0xF,
@@ -696,10 +738,10 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
                 key_ids,
                 pssh_data: PsshData::PlayReady(pr_pssh_data),
             })
-        },
+        }
         IRDETO_SYSTEM_ID => {
-            let ir_pssh_data = irdeto::parse_pssh_data(&pssh_data)
-                .context("parsing Irdeto PSSH data")?;
+            let ir_pssh_data =
+                irdeto::parse_pssh_data(&pssh_data).context("parsing Irdeto PSSH data")?;
             Ok(PsshBox {
                 version,
                 flags: version_and_flags & 0xF,
@@ -707,19 +749,16 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
                 key_ids,
                 pssh_data: PsshData::Irdeto(ir_pssh_data),
             })
-        },
-        MARLIN_SYSTEM_ID => {
-            Ok(PsshBox {
-                version,
-                flags: version_and_flags & 0xF,
-                system_id,
-                key_ids,
-                pssh_data: PsshData::Marlin(pssh_data),
-            })
-        },
+        }
+        MARLIN_SYSTEM_ID => Ok(PsshBox {
+            version,
+            flags: version_and_flags & 0xF,
+            system_id,
+            key_ids,
+            pssh_data: PsshData::Marlin(pssh_data),
+        }),
         NAGRA_SYSTEM_ID => {
-            let pd = nagra::parse_pssh_data(&pssh_data)
-                .context("parsing Nagra PSSH data")?;
+            let pd = nagra::parse_pssh_data(&pssh_data).context("parsing Nagra PSSH data")?;
             Ok(PsshBox {
                 version,
                 flags: version_and_flags & 0xF,
@@ -727,10 +766,10 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
                 key_ids,
                 pssh_data: PsshData::Nagra(pd),
             })
-        },
+        }
         WISEPLAY_SYSTEM_ID => {
-            let cdrm_pssh_data = wiseplay::parse_pssh_data(&pssh_data)
-                .context("parsing WisePlay PSSH data")?;
+            let cdrm_pssh_data =
+                wiseplay::parse_pssh_data(&pssh_data).context("parsing WisePlay PSSH data")?;
             Ok(PsshBox {
                 version,
                 flags: version_and_flags & 0xF,
@@ -738,25 +777,21 @@ fn read_pssh_box(rdr: &mut Cursor<&[u8]>) -> Result<PsshBox> {
                 key_ids,
                 pssh_data: PsshData::WisePlay(cdrm_pssh_data),
             })
-        },
-        COMMON_SYSTEM_ID => {
-            Ok(PsshBox {
-                version,
-                flags: version_and_flags & 0xF,
-                system_id,
-                key_ids,
-                pssh_data: PsshData::CommonEnc(pssh_data),
-            })
-        },
-        FAIRPLAYNFLX_SYSTEM_ID => {
-            Ok(PsshBox {
-                version,
-                flags: version_and_flags & 0xF,
-                system_id,
-                key_ids,
-                pssh_data: PsshData::FairPlay(pssh_data),
-            })
-        },
+        }
+        COMMON_SYSTEM_ID => Ok(PsshBox {
+            version,
+            flags: version_and_flags & 0xF,
+            system_id,
+            key_ids,
+            pssh_data: PsshData::CommonEnc(pssh_data),
+        }),
+        FAIRPLAYNFLX_SYSTEM_ID => Ok(PsshBox {
+            version,
+            flags: version_and_flags & 0xF,
+            system_id,
+            key_ids,
+            pssh_data: PsshData::FairPlay(pssh_data),
+        }),
         _ => Err(anyhow!("can't parse this system_id type: {:?}", system_id)),
     }
 }
@@ -767,10 +802,13 @@ pub fn from_bytes(init_data: &[u8]) -> Result<PsshBoxVec> {
     let total_len = init_data.len();
     let mut rdr = Cursor::new(init_data);
     let mut boxes = PsshBoxVec::new();
-    while (rdr.position() as usize) < total_len - 1  {
+    while (rdr.position() as usize) < total_len - 1 {
         let bx = read_pssh_box(&mut rdr)?;
         boxes.add(bx.clone());
-        trace!("Read one box {bx} from bytes, remaining {} octets", total_len as u64 - rdr.position());
+        trace!(
+            "Read one box {bx} from bytes, remaining {} octets",
+            total_len as u64 - rdr.position()
+        );
         let pos = rdr.position() as usize;
         if let Some(remaining) = &rdr.get_ref().get(pos..total_len) {
             // skip over any octets that are NULL
@@ -788,7 +826,7 @@ pub fn from_buffer(init_data: &[u8]) -> Result<PsshBoxVec> {
     let total_len = init_data.len();
     let mut rdr = Cursor::new(init_data);
     let mut boxes = PsshBoxVec::new();
-    while (rdr.position() as usize) < total_len - 1  {
+    while (rdr.position() as usize) < total_len - 1 {
         if let Ok(bx) = read_pssh_box(&mut rdr) {
             boxes.add(bx);
         } else {
@@ -803,15 +841,20 @@ pub fn from_buffer(init_data: &[u8]) -> Result<PsshBoxVec> {
 pub fn find_iter(buffer: &[u8]) -> impl Iterator<Item = usize> + '_ {
     use bstr::ByteSlice;
 
-    buffer.find_iter(b"pssh")
+    buffer
+        .find_iter(b"pssh")
         .filter(|offset| {
-            if offset+24 > buffer.len() {
+            if offset + 24 > buffer.len() {
                 return false;
             }
             let start = offset - 4;
             let mut rdr = Cursor::new(&buffer[start..]);
             let size: u32 = rdr.read_u32::<BigEndian>().unwrap();
             let end = start + size as usize;
+            // Check if end is within buffer bounds
+            if end > buffer.len() {
+                return false;
+            }
             from_bytes(&buffer[start..end]).is_ok()
         })
         .map(|offset| offset - 4)
@@ -831,7 +874,7 @@ pub fn pprint(pssh: &PsshBox) {
         PsshData::PlayReady(pr) => println!("  {pr:?}"),
         PsshData::Irdeto(pd) => {
             println!("Irdeto XML: {}", pd.xml);
-        },
+        }
         PsshData::Marlin(pd) => {
             println!("  Marlin PSSH data ({} octets)", pd.len());
             if !pd.is_empty() {
@@ -840,11 +883,11 @@ pub fn pprint(pssh: &PsshBox) {
                 hxdmp::hexdump(pd, &mut hxbuf).unwrap();
                 println!("{}", String::from_utf8_lossy(&hxbuf));
             }
-        },
+        }
         PsshData::Nagra(pd) => println!("  {pd:?}"),
         PsshData::WisePlay(pd) => {
             println!("  WisePlay JSON: {}", pd.json);
-        },
+        }
         PsshData::CommonEnc(pd) => {
             println!("  Common PSSH data ({} octets)", pd.len());
             if !pd.is_empty() {
@@ -853,7 +896,7 @@ pub fn pprint(pssh: &PsshBox) {
                 hxdmp::hexdump(pd, &mut hxbuf).unwrap();
                 println!("{}", String::from_utf8_lossy(&hxbuf));
             }
-        },
+        }
         PsshData::FairPlay(pd) => {
             println!("  FairPlay PSSH data ({} octets)", pd.len());
             if !pd.is_empty() {
@@ -862,6 +905,6 @@ pub fn pprint(pssh: &PsshBox) {
                 hxdmp::hexdump(pd, &mut hxbuf).unwrap();
                 println!("{}", String::from_utf8_lossy(&hxbuf));
             }
-        },
+        }
     }
 }

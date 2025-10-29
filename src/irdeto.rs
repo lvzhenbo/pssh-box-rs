@@ -1,13 +1,11 @@
 //! Definitions for PSSH data in the Irdeto DRM system.
 
-
-use std::fmt;
-use std::io::{Read, Cursor};
-use byteorder::{LittleEndian, ReadBytesExt};
-use serde::{Serialize, Deserialize};
-use anyhow::Result;
 use crate::ToBytes;
-
+use anyhow::Result;
+use byteorder::{LittleEndian, ReadBytesExt};
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::io::{Cursor, Read};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IrdetoPsshData {
@@ -25,7 +23,6 @@ impl ToBytes for IrdetoPsshData {
         self.xml.clone().into_bytes()
     }
 }
-
 
 pub fn parse_pssh_data(buf: &[u8]) -> Result<IrdetoPsshData> {
     let mut rdr = Cursor::new(buf);

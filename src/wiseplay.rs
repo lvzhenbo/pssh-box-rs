@@ -4,12 +4,11 @@
 // smartphones). It has the same system_id as "ChinaDRM". We only have WisePlay PSSH examples to
 // test with.
 
-use std::fmt;
-use serde_json::Value;
-use serde::{Serialize, Deserialize};
-use anyhow::Result;
 use crate::ToBytes;
-
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WisePlayPsshData {

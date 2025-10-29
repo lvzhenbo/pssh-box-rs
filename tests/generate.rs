@@ -1,11 +1,8 @@
 /// generate.rs -- tests for generating PSSH boxes
-
-
 use base64::prelude::{Engine as _, BASE64_STANDARD};
+use pssh_box::{from_base64, from_bytes, from_hex, pprint, DRMKeyId, PsshBox, PsshData, ToBytes};
+use pssh_box::{PLAYREADY_SYSTEM_ID, WIDEVINE_SYSTEM_ID};
 use test_log::test;
-use pssh_box::{pprint, from_bytes, from_base64, from_hex, ToBytes, PsshBox, PsshData, DRMKeyId};
-use pssh_box::{WIDEVINE_SYSTEM_ID, PLAYREADY_SYSTEM_ID};
-
 
 #[test]
 fn test_roundtrip_widevine_bytes() {
@@ -32,7 +29,6 @@ fn test_roundtrip_widevine_bytes() {
     }
 }
 
-
 #[test]
 fn test_roundtrip_widevine_base64() {
     let mut pssh = PsshBox::new_widevine();
@@ -55,7 +51,6 @@ fn test_roundtrip_widevine_base64() {
         assert_eq!(pd.content_id, Some(hex::encode("DEADBEAF").into()));
     }
 }
-
 
 #[test]
 fn test_roundtrip_widevine_hex() {
@@ -83,7 +78,6 @@ fn test_roundtrip_widevine_hex() {
     }
 }
 
-
 #[test]
 fn test_roundtrip_playready_bytes() {
     let mut pssh = PsshBox::new_playready();
@@ -107,10 +101,12 @@ fn test_roundtrip_playready_bytes() {
     println!("PlayReady> {pssh:?}");
     if let PsshData::PlayReady(ref pd) = parsed.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("7zDsYfDVHUY=").unwrap()));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("7zDsYfDVHUY=").unwrap())
+        );
     }
 }
-
 
 #[test]
 fn test_roundtrip_playready_base64() {
@@ -135,7 +131,13 @@ fn test_roundtrip_playready_base64() {
     println!("PlayReady> {pssh:?}");
     if let PsshData::PlayReady(ref pd) = parsed.pssh_data {
         let wrmh = &pd.record[0].record_value;
-        assert_eq!(wrmh.data.checksum, Some(BASE64_STANDARD.decode("7zDsYfDVHUY=").unwrap()));
-        assert_eq!(wrmh.data.lui_url, Some(String::from("http://www.example.com/")));
+        assert_eq!(
+            wrmh.data.checksum,
+            Some(BASE64_STANDARD.decode("7zDsYfDVHUY=").unwrap())
+        );
+        assert_eq!(
+            wrmh.data.lui_url,
+            Some(String::from("http://www.example.com/"))
+        );
     }
 }

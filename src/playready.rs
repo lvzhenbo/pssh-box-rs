@@ -7,19 +7,17 @@
 //
 // https://download.microsoft.com/download/2/3/8/238F67D9-1B8B-48D3-AB83-9C00112268B2/PlayReady%20Header%20Object%202015-08-13-FINAL-CL.PDF
 
-
-use std::fmt;
-use std::io::{Read, Cursor};
-use std::fmt::{Error, Write};
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use serde::{Serialize, Deserialize};
-use serde_with::{serde_as, skip_serializing_none};
-use serde_with::base64::Base64;
-use num_enum::TryFromPrimitive;
-use tracing::trace;
-use anyhow::{Result, Context, anyhow};
 use crate::ToBytes;
-
+use anyhow::{anyhow, Context, Result};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use num_enum::TryFromPrimitive;
+use serde::{Deserialize, Serialize};
+use serde_with::base64::Base64;
+use serde_with::{serde_as, skip_serializing_none};
+use std::fmt;
+use std::fmt::{Error, Write};
+use std::io::{Cursor, Read};
+use tracing::trace;
 
 struct Utf16Writer(Vec<u16>);
 
@@ -37,13 +35,14 @@ impl Write for Utf16Writer {
 
 pub fn to_utf16(xml: &str) -> Vec<u16> {
     let mut writer = Utf16Writer(Vec::new());
-    write!(writer, "{xml}")
-        .expect("writing XML as UTF-16");
+    write!(writer, "{xml}").expect("writing XML as UTF-16");
     writer.0
 }
 
 fn serialize_xmlns<S>(os: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
-where S: serde::Serializer {
+where
+    S: serde::Serializer,
+{
     if let Some(s) = os {
         serializer.serialize_str(s)
     } else {
@@ -82,7 +81,6 @@ pub struct ProtectInfo {
     pub kids: Vec<PlayReadyKid>,
 }
 
-
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,7 +115,7 @@ pub struct WRMData {
 #[serde(rename = "WRMHEADER")]
 #[serde(default)]
 pub struct WRMHeader {
-    #[serde(rename = "@xmlns", serialize_with="serialize_xmlns")]
+    #[serde(rename = "@xmlns", serialize_with = "serialize_xmlns")]
     pub xmlns: Option<String>,
     #[serde(rename = "@version")]
     pub version: String,
@@ -127,8 +125,7 @@ pub struct WRMHeader {
 
 impl ToBytes for WRMHeader {
     fn to_bytes(&self) -> Vec<u8> {
-        let xml = quick_xml::se::to_string(self)
-            .expect("parsing WRMHeader XML");
+        let xml = quick_xml::se::to_string(self).expect("parsing WRMHeader XML");
         let mut out = Vec::<u8>::new();
         for u in to_utf16(&xml) {
             let _ = out.write_u16::<LittleEndian>(u);
@@ -164,7 +161,9 @@ impl PlayReadyRecord {
     pub fn new() -> PlayReadyRecord {
         let xml = "<WRMHEADER><DATA></DATA></WRMHEADER>";
         let mut rv: WRMHeader = quick_xml::de::from_str(xml).unwrap();
-        rv.xmlns = Some(String::from("http://schemas.microsoft.com/DRM/2007/03/PlayReadyHeader"));
+        rv.xmlns = Some(String::from(
+            "http://schemas.microsoft.com/DRM/2007/03/PlayReadyHeader",
+        ));
         rv.version = String::from("4.0.0.0");
         PlayReadyRecord {
             record_type: PlayReadyRecordType::RightsManagement,
@@ -185,12 +184,16 @@ impl ToBytes for PlayReadyRecord {
 }
 
 fn parse_playready_record(rdr: &mut Cursor<&[u8]>) -> Result<PlayReadyRecord> {
-    let record_type = rdr.read_u16::<LittleEndian>()
+    let record_type = rdr
+        .read_u16::<LittleEndian>()
         .context("reading record_type field")?;
     if record_type != 1 {
-        return Err(anyhow!("can't parse PlayReady record of type {record_type}"));
+        return Err(anyhow!(
+            "can't parse PlayReady record of type {record_type}"
+        ));
     }
-    let record_length = rdr.read_u16::<LittleEndian>()
+    let record_length = rdr
+        .read_u16::<LittleEndian>()
         .context("reading record_length field")?;
     let mut wrmh_u8 = Vec::new();
     rdr.take(record_length.into()).read_to_end(&mut wrmh_u8)?;
@@ -198,19 +201,19 @@ fn parse_playready_record(rdr: &mut Cursor<&[u8]>) -> Result<PlayReadyRecord> {
         .chunks(2)
         .map(|e| u16::from_le_bytes(e.try_into().unwrap()))
         .collect::<Vec<_>>();
-    let mut xml = String::from_utf16(&wrmh_u16)
-        .context("decoding UTF-16")?;
+    let mut xml = String::from_utf16(&wrmh_u16).context("decoding UTF-16")?;
     // Extract a possible <CUSTOMATTRIBUTES>...</CUSTOMATTRIBUTES> in the input, because it tends
     // not to contain valid XML (undeclared namespaces, in particular) and makes the XML parsing
     // fail. We insert it as a string in the parsed struct.
     let mut custom_attributes: Option<String> = None;
-    if let Some(start) =  xml.find("<CUSTOMATTRIBUTES") {
+    if let Some(start) = xml.find("<CUSTOMATTRIBUTES") {
         if let Some(end) = xml.find("</CUSTOMATTRIBUTES>") {
             if end < start {
                 return Err(anyhow!("invalid CUSTOMATTRIBUTES element"));
             }
             if let Some(subseq) = xml.get(start..end) {
-                let ca_tag_end = subseq.find('>')
+                let ca_tag_end = subseq
+                    .find('>')
                     .context("finding end of CUSTOMATTRIBUTES element")?;
                 let inner_start = ca_tag_end + 1;
                 trace!("start = {}, inner_start = {}", start, inner_start);
@@ -222,8 +225,8 @@ fn parse_playready_record(rdr: &mut Cursor<&[u8]>) -> Result<PlayReadyRecord> {
         }
     }
     let xd = &mut quick_xml::de::Deserializer::from_str(&xml);
-    let mut wrm_header: WRMHeader = serde_path_to_error::deserialize(xd)
-        .context("parsing PlayReady XML")?;
+    let mut wrm_header: WRMHeader =
+        serde_path_to_error::deserialize(xd).context("parsing PlayReady XML")?;
     wrm_header.data.custom_attributes = custom_attributes;
     Ok(PlayReadyRecord {
         record_type: PlayReadyRecordType::try_from(record_type)?,
@@ -250,8 +253,7 @@ impl fmt::Debug for PlayReadyPsshData {
         let mut items = Vec::new();
         for r in &self.record {
             if r.record_type == PlayReadyRecordType::RightsManagement {
-                let xml = quick_xml::se::to_string(&r.record_value)
-                    .map_err(|_| fmt::Error)?;
+                let xml = quick_xml::se::to_string(&r.record_value).map_err(|_| fmt::Error)?;
                 items.push(format!("RightsManagementRecord: {xml}"));
             } else {
                 items.push(format!("{r:?}"));
@@ -261,19 +263,22 @@ impl fmt::Debug for PlayReadyPsshData {
     }
 }
 
-
 impl ToBytes for PlayReadyPsshData {
     #[allow(unused_must_use)]
     fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::<u8>::new();
         let mut records_buf = Vec::<u8>::new();
         for r in &self.record {
-            trace!("Serializing playready, record of length {}", r.to_bytes().len());
+            trace!(
+                "Serializing playready, record of length {}",
+                r.to_bytes().len()
+            );
             records_buf.append(&mut r.to_bytes());
         }
         let total_length: u32 = 4 + 2 + records_buf.len() as u32;
         buf.write_u32::<LittleEndian>(total_length).unwrap();
-        buf.write_u16::<LittleEndian>(self.record.len().try_into().unwrap()).unwrap();
+        buf.write_u16::<LittleEndian>(self.record.len().try_into().unwrap())
+            .unwrap();
         buf.append(&mut records_buf);
         buf
     }
@@ -282,18 +287,20 @@ impl ToBytes for PlayReadyPsshData {
 pub fn parse_pssh_data(buf: &[u8]) -> Result<PlayReadyPsshData> {
     let mut rdr = Cursor::new(buf);
     let blen = buf.len() as u32;
-    let length = rdr.read_u32::<LittleEndian>()
+    let length = rdr
+        .read_u32::<LittleEndian>()
         .context("reading pssh data length")?;
     if length != blen {
-        return Err(anyhow!("header length {length} different from buffer length {blen}"));
+        return Err(anyhow!(
+            "header length {length} different from buffer length {blen}"
+        ));
     }
-    let record_count = rdr.read_u16::<LittleEndian>()
+    let record_count = rdr
+        .read_u16::<LittleEndian>()
         .context("reading pssh data record count")?;
     let mut records = Vec::new();
     for _ in 1..=record_count {
         records.push(parse_playready_record(&mut rdr)?);
     }
-    Ok(PlayReadyPsshData {
-        record: records,
-    })
+    Ok(PlayReadyPsshData { record: records })
 }

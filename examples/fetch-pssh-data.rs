@@ -24,18 +24,16 @@
 //
 //     cargo run --example fetch-pssh-data https://m.dtv.fi/dash/dasherh264v3/drm/a1/i.mp4
 
-use std::time::Duration;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::prelude::*;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use clap::Arg;
 use pssh_box::{find_iter, from_buffer, pprint};
-
+use std::time::Duration;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .compact();
+    let fmt_layer = tracing_subscriber::fmt::layer().compact();
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| EnvFilter::try_new("info,reqwest=warn"))
         .unwrap();
@@ -46,20 +44,21 @@ async fn main() -> Result<()> {
     let clap = clap::Command::new("fetch-pssh-data")
         .about("Parse DRM initialization data (a PSSH box) in an MP4 container.")
         .version(clap::crate_version!())
-        .arg(Arg::new("url")
-             .value_name("URL")
-             .required(true)
-             .num_args(1)
-             .index(1)
-             .help("The URL of the MP4 initialization segment."));
+        .arg(
+            Arg::new("url")
+                .value_name("URL")
+                .required(true)
+                .num_args(1)
+                .index(1)
+                .help("The URL of the MP4 initialization segment."),
+        );
     let matches = clap.get_matches();
     let url = matches.get_one::<String>("url").unwrap();
     let client = reqwest::Client::builder()
         .timeout(Duration::new(30, 0))
         .build()
         .context("creating HTTP client")?;
-    let req = client.get(url)
-        .header("Accept", "video/*");
+    let req = client.get(url).header("Accept", "video/*");
     if let Ok(mut resp) = req.send().await {
         // We download progressively to avoid filling RAM with a large MP4 file.
         let mut chunk_counter = 0;
@@ -81,4 +80,3 @@ async fn main() -> Result<()> {
     }
     Ok(())
 }
-

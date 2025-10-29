@@ -860,6 +860,127 @@ pub fn find_iter(buffer: &[u8]) -> impl Iterator<Item = usize> + '_ {
         .map(|offset| offset - 4)
 }
 
+/// Find and parse PSSH boxes from a stream without loading the entire content into memory.
+/// This is a streaming version of `find_iter` that's suitable for large files.
+///
+/// The function reads from the provided `reader` in chunks and yields `PsshBox` instances
+/// as they are found and successfully parsed. This approach minimizes memory usage by not
+/// requiring the entire file to be loaded into memory at once.
+///
+/// # Arguments
+///
+/// * `reader` - Any type implementing `Read` trait (file, network stream, etc.)
+/// * `chunk_size` - Size of chunks to read at a time (default: 8192 bytes recommended)
+///
+/// # Returns
+///
+/// Returns a `Result` containing a vector of `PsshBox` instances found in the stream.
+///
+/// # Example
+///
+/// ```no_run
+/// use std::fs::File;
+/// use pssh_box::find_pssh_boxes_streaming;
+///
+/// let file = File::open("large_video.mp4").unwrap();
+/// let boxes = find_pssh_boxes_streaming(file, 8192).unwrap();
+/// for pssh in boxes {
+///     println!("Found PSSH box: {}", pssh);
+/// }
+/// ```
+pub fn find_pssh_boxes_streaming<R: Read>(
+    mut reader: R,
+    chunk_size: usize,
+) -> Result<Vec<PsshBox>> {
+    use bstr::ByteSlice;
+
+    let mut boxes = Vec::new();
+    let mut buffer = Vec::new();
+    let mut overlap_buffer = Vec::new();
+
+    // We need to maintain an overlap buffer to catch PSSH boxes that span chunk boundaries
+    // A PSSH box header is at least 32 bytes, so we need to keep that much overlap
+    let overlap_size = 1024; // Keep 1KB overlap to be safe
+
+    loop {
+        // Prepare the buffer for reading
+        buffer.clear();
+        buffer.extend_from_slice(&overlap_buffer);
+        let overlap_len = buffer.len();
+
+        // Read a chunk
+        let mut chunk = vec![0u8; chunk_size];
+        let bytes_read = reader.read(&mut chunk)?;
+        if bytes_read == 0 && overlap_len == 0 {
+            break; // EOF and no overlap data
+        }
+
+        buffer.extend_from_slice(&chunk[..bytes_read]);
+
+        // Find PSSH boxes in current buffer
+        // Only process boxes that start in the new data (not in the overlap region)
+        // to avoid processing the same box multiple times
+        let pssh_positions: Vec<(usize, usize)> = buffer
+            .find_iter(b"pssh")
+            .filter_map(|offset| {
+                if offset + 24 > buffer.len() {
+                    return None;
+                }
+                let start = offset.checked_sub(4)?;
+
+                // Skip boxes that are entirely in the overlap region
+                // (they were processed in the previous iteration)
+                if overlap_len > 0 && start < overlap_len {
+                    // Check if the box extends into new data or is entirely in overlap
+                    let mut rdr = Cursor::new(&buffer[start..]);
+                    let size: u32 = rdr.read_u32::<BigEndian>().ok()?;
+                    let end = start.checked_add(size as usize)?;
+
+                    // If the box is entirely in the overlap region, skip it
+                    if end <= overlap_len {
+                        return None;
+                    }
+                }
+
+                let mut rdr = Cursor::new(&buffer[start..]);
+                let size: u32 = rdr.read_u32::<BigEndian>().ok()?;
+                let end = start.checked_add(size as usize)?;
+
+                // Check if we have the complete box in our buffer
+                if end > buffer.len() {
+                    return None;
+                }
+
+                // Try to parse the box
+                match from_bytes(&buffer[start..end]) {
+                    Ok(parsed_boxes) if !parsed_boxes.is_empty() => Some((start, end)),
+                    _ => None,
+                }
+            })
+            .collect();
+
+        // Parse and collect the PSSH boxes we found
+        for (start, end) in pssh_positions {
+            if let Ok(parsed) = from_bytes(&buffer[start..end]) {
+                for bx in parsed {
+                    boxes.push(bx);
+                }
+            }
+        }
+
+        // Prepare overlap buffer for next iteration
+        if bytes_read == 0 {
+            break; // EOF
+        }
+
+        overlap_buffer.clear();
+        let overlap_start = buffer.len().saturating_sub(overlap_size);
+        overlap_buffer.extend_from_slice(&buffer[overlap_start..]);
+    }
+
+    Ok(boxes)
+}
+
 /// Multiline pretty printing of a PsshBox (verbose alternative to `to_string()` method).
 pub fn pprint(pssh: &PsshBox) {
     println!("PSSH Box v{}", pssh.version);

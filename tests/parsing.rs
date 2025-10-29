@@ -1,11 +1,14 @@
 /// Tests for PSSH box parsing
 use base64::prelude::{Engine as _, BASE64_STANDARD};
-use pssh_box::{find_iter, from_base64, from_buffer, from_bytes, from_hex, pprint};
+use pssh_box::{
+    find_iter, find_pssh_boxes_streaming, from_base64, from_buffer, from_bytes, from_hex, pprint,
+};
 use pssh_box::{DRMKeyId, PsshData};
 use pssh_box::{
     COMMON_SYSTEM_ID, FAIRPLAYNFLX_SYSTEM_ID, IRDETO_SYSTEM_ID, MARLIN_SYSTEM_ID, NAGRA_SYSTEM_ID,
     PLAYREADY_SYSTEM_ID, WIDEVINE_SYSTEM_ID, WISEPLAY_SYSTEM_ID,
 };
+use std::io::Cursor;
 use test_log::test;
 
 #[test]
@@ -917,6 +920,35 @@ fn test_find_iter_with_corrupted_size() {
 
     let positions2: Vec<usize> = find_iter(&buffer2).collect();
     assert_eq!(positions2.len(), 0);
+}
+
+#[test]
+fn test_find_pssh_boxes_streaming() {
+    // Test streaming function with valid PSSH boxes
+    let buf = BASE64_STANDARD.decode("AAAAQHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACAiGFlPVVRVQkU6NTM5ZjEyZjRhM2IzMTczYkjj3JWbBgAAAvRwc3NoAAAAAJoE8HmYQEKGq5LmW+CIX5UAAALU1AIAAAEAAQDKAjwAVwBSAE0ASABFAEEARABFAFIAIAB4AG0AbABuAHMAPQAiAGgAdAB0AHAAOgAvAC8AcwBjAGgAZQBtAGEAcwAuAG0AaQBjAHIAbwBzAG8AZgB0AC4AYwBvAG0ALwBEAFIATQAvADIAMAAwADcALwAwADMALwBQAGwAYQB5AFIAZQBhAGQAeQBIAGUAYQBkAGUAcgAiACAAdgBlAHIAcwBpAG8AbgA9ACIANAAuADAALgAwAC4AMAAiAD4APABEAEEAVABBAD4APABQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsARQBZAEwARQBOAD4AMQA2ADwALwBLAEUAWQBMAEUATgA+ADwAQQBMAEcASQBEAD4AQQBFAFMAQwBUAFIAPAAvAEEATABHAEkARAA+ADwALwBQAFIATwBUAEUAQwBUAEkATgBGAE8APgA8AEsASQBEAD4AdwB3AFQASwA0AFMAbwBkAEYAVgArAFgAMQAwAHYAYQBjAFMAQgBFAEcAUQA9AD0APAAvAEsASQBEAD4APABDAEgARQBDAEsAUwBVAE0APgA1AGsASgArADcANgBDAHEAYQB0AHMAPQA8AC8AQwBIAEUAQwBLAFMAVQBNAD4APABMAEEAXwBVAFIATAA+AGgAdAB0AHAAcwA6AC8ALwB3AHcAdwAuAHkAbwB1AHQAdQBiAGUALgBjAG8AbQAvAGEAcABpAC8AZAByAG0ALwBwAGwAYQB5AHIAZQBhAGQAeQA/AHMAbwB1AHIAYwBlAD0AWQBPAFUAVABVAEIARQAmAGEAbQBwADsAdgBpAGQAZQBvAF8AaQBkAD0ANQAzADkAZgAxADIAZgA0AGEAMwBiADMAMQA3ADMAYgA8AC8ATABBAF8AVQBSAEwAPgA8AC8ARABBAFQAQQA+ADwALwBXAFIATQBIAEUAQQBEAEUAUgA+AA==")
+        .unwrap();
+
+    let reader = Cursor::new(&buf);
+    let boxes = find_pssh_boxes_streaming(reader, 512).unwrap();
+
+    assert_eq!(boxes.len(), 2);
+    assert_eq!(boxes[0].system_id, WIDEVINE_SYSTEM_ID);
+    assert_eq!(boxes[1].system_id, PLAYREADY_SYSTEM_ID);
+
+    // Test with corrupted size that exceeds buffer
+    let mut corrupted_buf = Vec::new();
+    corrupted_buf.extend_from_slice(&u32::to_be_bytes(0xFFFFFFFF));
+    corrupted_buf.extend_from_slice(b"pssh");
+    corrupted_buf.extend_from_slice(&[0u8; 100]);
+
+    let reader2 = Cursor::new(&corrupted_buf);
+    let boxes2 = find_pssh_boxes_streaming(reader2, 512).unwrap();
+    assert_eq!(boxes2.len(), 0);
+
+    // Test with small chunk size to verify overlap handling
+    let reader3 = Cursor::new(&buf);
+    let boxes3 = find_pssh_boxes_streaming(reader3, 64).unwrap();
+    assert_eq!(boxes3.len(), 2);
 }
 
 #[test]

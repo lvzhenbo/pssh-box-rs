@@ -12,13 +12,11 @@
 //
 // This commandline utility will download an initialization segment from an URL specified on the
 // commandline. You can use a file:// URL if you have already downloaded the segment (may be useful
-// if the web server requires authorization). It will print all PSSH boxes found at the beginning of
-// the file.
+// if the web server requires authorization). It will print all PSSH boxes found using a streaming
+// approach that minimizes memory usage.
 //
-// Implementation detail: in principle, we should decode the fragmented MP4 stream to look for a box
-// of type 'pssh'. You can do this using the mp4dump utility. In practice, given the relatively low
-// maturity of MP4 decoding crates, it's easier simply to scan the binary for the signature of a
-// PSSH box, which is what we do here.
+// Implementation detail: We use a streaming approach to process the data without loading the
+// entire file into memory, which is important for large MP4 files.
 //
 // Usage:
 //
@@ -26,7 +24,7 @@
 
 use anyhow::{Context, Result};
 use clap::Arg;
-use pssh_box::{find_iter, from_buffer, pprint};
+use pssh_box::{find_pssh_boxes_streaming, pprint};
 use std::time::Duration;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -54,28 +52,33 @@ async fn main() -> Result<()> {
         );
     let matches = clap.get_matches();
     let url = matches.get_one::<String>("url").unwrap();
+
+    // For file:// URLs, use streaming to avoid loading entire file into memory
+    if url.starts_with("file://") {
+        let path = url.strip_prefix("file://").unwrap();
+        let file = std::fs::File::open(path).context("opening local file")?;
+        let boxes =
+            find_pssh_boxes_streaming(file, 8192).context("parsing PSSH boxes from file")?;
+        for bx in boxes {
+            pprint(&bx);
+        }
+        return Ok(());
+    }
+
+    // For HTTP URLs, download to memory (simpler for demo)
+    // In production, you'd want to use async streaming here too
     let client = reqwest::Client::builder()
         .timeout(Duration::new(30, 0))
         .build()
         .context("creating HTTP client")?;
     let req = client.get(url).header("Accept", "video/*");
-    if let Ok(mut resp) = req.send().await {
-        // We download progressively to avoid filling RAM with a large MP4 file.
-        let mut chunk_counter = 0;
-        let mut segment_first_bytes = Vec::<u8>::new();
-        while let Ok(Some(chunk)) = resp.chunk().await {
-            segment_first_bytes.append(&mut chunk.to_vec());
-            chunk_counter += 1;
-            if chunk_counter > 20 {
-                break;
-            }
-        }
-        let positions: Vec<usize> = find_iter(&segment_first_bytes).collect();
-        for pos in positions {
-            let boxes = from_buffer(&segment_first_bytes[pos..]).unwrap();
-            for bx in boxes {
-                pprint(&bx);
-            }
+    if let Ok(resp) = req.send().await {
+        let bytes = resp.bytes().await?;
+        let cursor = std::io::Cursor::new(bytes);
+        let boxes =
+            find_pssh_boxes_streaming(cursor, 8192).context("parsing PSSH boxes from stream")?;
+        for bx in boxes {
+            pprint(&bx);
         }
     }
     Ok(())

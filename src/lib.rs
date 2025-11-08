@@ -920,51 +920,50 @@ pub fn find_pssh_boxes_streaming<R: Read>(
         // Find PSSH boxes in current buffer
         // Only process boxes that start in the new data (not in the overlap region)
         // to avoid processing the same box multiple times
-        let pssh_positions: Vec<(usize, usize)> = buffer
-            .find_iter(b"pssh")
-            .filter_map(|offset| {
-                if offset + 24 > buffer.len() {
-                    return None;
-                }
-                let start = offset.checked_sub(4)?;
+        for offset in buffer.find_iter(b"pssh") {
+            if offset + 24 > buffer.len() {
+                continue;
+            }
+            let Some(start) = offset.checked_sub(4) else {
+                continue;
+            };
 
-                // Skip boxes that are entirely in the overlap region
-                // (they were processed in the previous iteration)
-                if overlap_len > 0 && start < overlap_len {
-                    // Check if the box extends into new data or is entirely in overlap
-                    let mut rdr = Cursor::new(&buffer[start..]);
-                    let size: u32 = rdr.read_u32::<BigEndian>().ok()?;
-                    let end = start.checked_add(size as usize)?;
-
-                    // If the box is entirely in the overlap region, skip it
-                    if end <= overlap_len {
-                        return None;
-                    }
-                }
-
+            // Skip boxes that are entirely in the overlap region
+            // (they were processed in the previous iteration)
+            if overlap_len > 0 && start < overlap_len {
+                // Check if the box extends into new data or is entirely in overlap
                 let mut rdr = Cursor::new(&buffer[start..]);
-                let size: u32 = rdr.read_u32::<BigEndian>().ok()?;
-                let end = start.checked_add(size as usize)?;
+                let Ok(size) = rdr.read_u32::<BigEndian>() else {
+                    continue;
+                };
+                let Some(end) = start.checked_add(size as usize) else {
+                    continue;
+                };
 
-                // Check if we have the complete box in our buffer
-                if end > buffer.len() {
-                    return None;
+                // If the box is entirely in the overlap region, skip it
+                if end <= overlap_len {
+                    continue;
                 }
+            }
 
-                // Try to parse the box
-                match from_bytes(&buffer[start..end]) {
-                    Ok(parsed_boxes) if !parsed_boxes.is_empty() => Some((start, end)),
-                    _ => None,
-                }
-            })
-            .collect();
+            let mut rdr = Cursor::new(&buffer[start..]);
+            let Ok(size) = rdr.read_u32::<BigEndian>() else {
+                continue;
+            };
+            let Some(end) = start.checked_add(size as usize) else {
+                continue;
+            };
 
-        // Parse and collect the PSSH boxes we found
-        for (start, end) in pssh_positions {
-            if let Ok(parsed) = from_bytes(&buffer[start..end]) {
-                for bx in parsed {
-                    boxes.push(bx);
-                }
+            // Check if we have the complete box in our buffer
+            if end > buffer.len() {
+                continue;
+            }
+
+            // Parse just this one box directly instead of calling from_bytes
+            // which might try to parse multiple boxes
+            let mut rdr = Cursor::new(&buffer[start..end]);
+            if let Ok(bx) = read_pssh_box(&mut rdr) {
+                boxes.push(bx);
             }
         }
 

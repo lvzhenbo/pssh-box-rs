@@ -952,6 +952,37 @@ fn test_find_pssh_boxes_streaming() {
 }
 
 #[test]
+fn test_find_pssh_boxes_streaming_many_boxes() {
+    // Test with many PSSH boxes to ensure no stack overflow
+    // This tests the fix for recursive stack overflow issue
+
+    // Use a valid small Widevine PSSH box from the test suite
+    let valid_box = BASE64_STANDARD.decode(
+        "AAAAR3Bzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACcIARIBMBoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoFQVVESU8="
+    ).unwrap();
+
+    let mut large_buffer = Vec::new();
+
+    // Add many copies of the valid box (100 should be enough to test)
+    for _ in 0..100 {
+        large_buffer.extend_from_slice(&valid_box);
+    }
+
+    let reader = Cursor::new(&large_buffer);
+    let result = find_pssh_boxes_streaming(reader, 8192);
+
+    // Should succeed without stack overflow
+    assert!(result.is_ok());
+    let boxes = result.unwrap();
+    // We should get exactly 100 boxes
+    assert_eq!(boxes.len(), 100);
+    // All should be Widevine
+    for bx in &boxes {
+        assert_eq!(bx.system_id, WIDEVINE_SYSTEM_ID);
+    }
+}
+
+#[test]
 fn test_partialeq() {
     let boxes = from_base64("AAAAR3Bzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACcIARIBMBoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoFQVVESU8=")
         .unwrap();
